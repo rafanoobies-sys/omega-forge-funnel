@@ -105,7 +105,6 @@ async def onboard_lead(lead: LeadStory):
 async def health():
     return {"status": "healthy", "service": "Omega Forge"}
 
-# 🔥 THIS IS THE IMPORTANT PART FOR VERCEL:
-# Vercel requires the app instance to be named 'app'
-# or you need to use Mangum. Let's keep it simple:
-app = app
+# ===== IMPORTANT: VERCEL REQUIRES THIS =====
+from mangum import Mangum
+handler = Mangum(app)
