@@ -64,7 +64,7 @@ def extract_story(lead: LeadStory) -> dict:
 def save_to_airtable(lead: LeadStory, ai_data: dict) -> str:
     url = f"https://api.airtable.com/v0/{os.environ.get('AIRTABLE_BASE_ID')}/Leads"
     headers = {
-        "Authorization": f"Bearer {os.environ.get('AIRTABLE_API_TOKEN')}",
+        "Authorization": f"Bearer {os.environ.get('AIRTABLE_API_TOKEN', '').strip()}",
         "Content-Type": "application/json"
     }
     payload = {
