@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 function WelcomeContent() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get("lead_id");
