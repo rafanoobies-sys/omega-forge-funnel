@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+// Force dynamic rendering to skip static generation
 export const dynamic = "force-dynamic";
 
 function WelcomeContent() {
