@@ -1,13 +1,19 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import os
 import json
 import requests
-from datetime import datetime
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from mangum import Mangum
+from supabase import create_client, Client
+from dotenv import load_dotenv   # <-- ADD THIS
+
+load_dotenv()   # <-- ADD THIS (loads .env file)
 
 app = FastAPI()
+...
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Models
 class LeadStory(BaseModel):
     business_name: str
     origin_story: str
@@ -24,6 +31,13 @@ class LeadStory(BaseModel):
     secret_edge: str
     goal_6months: str
 
+# Supabase client
+supabase: Client = create_client(
+    os.environ.get("SUPABASE_URL"),
+    os.environ.get("SUPABASE_ANON_KEY")
+)
+
+# --- AI Call (Groq) ---
 def call_groq(prompt: str) -> dict:
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
@@ -31,7 +45,7 @@ def call_groq(prompt: str) -> dict:
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "llama3-70b-8192",  # Updated to working model
         "messages": [
             {
                 "role": "system",
@@ -61,39 +75,35 @@ def extract_story(lead: LeadStory) -> dict:
             "lead_score": 7
         }
 
-def save_to_airtable(lead: LeadStory, ai_data: dict) -> str:
-    url = f"https://api.airtable.com/v0/{os.environ.get('AIRTABLE_BASE_ID')}/Leads"
-    headers = {
-        "Authorization": f"Bearer {os.environ.get('AIRTABLE_API_TOKEN', '').strip()}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "records": [{
-            "fields": {
-                "Business_Name": lead.business_name,
-                "Origin_Story": lead.origin_story,
-                "Products_List": lead.products_list,
-                "Struggles": lead.struggles,
-                "Secret_Edge": lead.secret_edge,
-                "Goal_6Months": lead.goal_6months,
-                "AI_Core_Vibe": ai_data.get("core_vibe"),
-                "AI_Hook_Headline": ai_data.get("hook_headline"),
-                "AI_Keywords": ai_data.get("keywords"),
-                "AI_ValueProp": ai_data.get("value_prop"),
-                "Lead_Score": ai_data.get("lead_score", 5),
-                "Status": "New"
-            }
-        }]
-    }
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code != 200:
-        raise Exception(f"Airtable error: {response.text}")
-    return response.json()["records"][0]["id"]
+# --- Endpoints ---
+@app.get("/api/health")
+async def health():
+    return {"status": "healthy", "service": "Omega Forge"}
 
 @app.post("/api/onboard-lead")
 async def onboard_lead(lead: LeadStory):
+    # 1. AI extraction
     ai_data = extract_story(lead)
-    record_id = save_to_airtable(lead, ai_data)
+
+    # 2. Save to Supabase
+    record = {
+        "business_name": lead.business_name,
+        "origin_story": lead.origin_story,
+        "products_list": lead.products_list,
+        "struggles": lead.struggles,
+        "secret_edge": lead.secret_edge,
+        "goal_6months": lead.goal_6months,
+        "ai_core_vibe": ai_data.get("core_vibe"),
+        "ai_hook_headline": ai_data.get("hook_headline"),
+        "ai_keywords": ai_data.get("keywords"),
+        "ai_value_prop": ai_data.get("value_prop"),
+        "lead_score": ai_data.get("lead_score", 5),
+        "status": "New"
+    }
+
+    result = supabase.table("leads").insert(record).execute()
+    record_id = result.data[0]["id"] if result.data else None
+
     return {
         "success": True,
         "record_id": record_id,
@@ -101,10 +111,4 @@ async def onboard_lead(lead: LeadStory):
         **ai_data
     }
 
-@app.get("/api/health")
-async def health():
-    return {"status": "healthy", "service": "Omega Forge"}
-
-# ===== IMPORTANT: VERCEL REQUIRES THIS =====
-from mangum import Mangum
 handler = Mangum(app)
