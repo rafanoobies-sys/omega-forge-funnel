@@ -45,17 +45,15 @@ def call_groq(prompt: str) -> dict:
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama3-70b-8192",  # Updated to working model
-        "messages": [
-            {
-                "role": "system",
-                "content": """You are the 'Story Catcher' AI for Omega Forge. Extract structured business intelligence. Output ONLY valid JSON with these keys: "core_vibe", "hook_headline", "keywords", "value_prop", "lead_score"."""
-            },
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 500
-    }
+    "model": "llama-3.3-70b-versatile",  # <-- Working model
+    "messages": [
+        {"role": "system", "content": "You are the 'Story Catcher' AI for Omega Forge. Extract structured business intelligence. Output ONLY valid JSON with these keys: \"core_vibe\", \"hook_headline\", \"keywords\", \"value_prop\", \"lead_score\"."},
+        {"role": "user", "content": prompt}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500
+}
+    
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code != 200:
         raise Exception(f"Groq error: {response.text}")
