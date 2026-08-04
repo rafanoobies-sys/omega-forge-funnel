@@ -8,11 +8,10 @@ from mangum import Mangum
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()  # Loads .env file
+load_dotenv()
 
 app = FastAPI()
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ===== MODELS =====
 class LeadStory(BaseModel):
     full_name: str
     business_name: str
@@ -34,13 +32,11 @@ class LeadStory(BaseModel):
     email: str
     phone: str
 
-# Supabase client
 supabase: Client = create_client(
     os.environ.get("SUPABASE_URL"),
     os.environ.get("SUPABASE_ANON_KEY")
 )
 
-# ===== AI CALL (GROQ) =====
 def call_groq(prompt: str) -> dict:
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
@@ -52,7 +48,7 @@ def call_groq(prompt: str) -> dict:
         "messages": [
             {
                 "role": "system",
-                "content": """You are the 'Story Catcher' AI for Omega Forge. Extract structured business intelligence. Output ONLY valid JSON with these keys: "core_vibe", "hook_headline", "keywords", "value_prop", "lead_score"."""
+                "content": "You are the 'Story Catcher' AI for Omega Forge. Extract structured business intelligence. Output ONLY valid JSON with these keys: \"core_vibe\", \"hook_headline\", \"keywords\", \"value_prop\", \"lead_score\"."
             },
             {"role": "user", "content": prompt}
         ],
@@ -79,17 +75,21 @@ def extract_story(lead: LeadStory) -> dict:
             "lead_score": 7
         }
 
-# ===== ENDPOINTS =====
 @app.get("/api/health")
 async def health():
     return {"status": "healthy", "service": "Omega Forge"}
 
 @app.post("/api/onboard-lead")
 async def onboard_lead(lead: LeadStory):
-    # 1. AI extraction
     ai_data = extract_story(lead)
 
-    # 2. Save to Supabase
+    # Ensure lead_score is an integer
+    lead_score = ai_data.get("lead_score", 5)
+    try:
+        lead_score = int(lead_score)
+    except (TypeError, ValueError):
+        lead_score = 5
+
     record = {
         "full_name": lead.full_name,
         "business_name": lead.business_name,
@@ -103,7 +103,7 @@ async def onboard_lead(lead: LeadStory):
         "ai_hook_headline": ai_data.get("hook_headline"),
         "ai_keywords": ai_data.get("keywords"),
         "ai_value_prop": ai_data.get("value_prop"),
-        "lead_score": ai_data.get("lead_score", 5),
+        "lead_score": lead_score,
         "status": "New",
         "email": lead.email,
         "phone": lead.phone,
@@ -130,5 +130,4 @@ async def get_lead_status(lead_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ===== VERCEL HANDLER =====
 handler = Mangum(app)
