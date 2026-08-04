@@ -27,7 +27,20 @@ export default function WelcomePage() {
         <div className="space-y-4">
           <div className="bg-white/5 rounded-lg p-4 border border-white/10"><p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">Your Core Vibe</p><p className="text-white text-lg mt-1">{data.core_vibe}</p></div>
           <div className="bg-yellow-400/10 rounded-lg p-4 border border-yellow-400/30"><p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">⚡ Your Hook</p><p className="text-white text-lg mt-1 italic">"{data.hook_headline}"</p></div>
-          <div className="bg-white/5 rounded-lg p-4 border border-white/10"><p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">SEO Keywords We'll Target</p><div className="flex flex-wrap gap-2 mt-1">{data.keywords && data.keywords.split(",").map((kw, idx) => <span key={idx} className="bg-white/10 px-3 py-1 rounded-full text-white text-sm">{kw.trim()}</span>)}</div></div>
+          <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+            <p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">SEO Keywords We'll Target</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {data.keywords && (
+                Array.isArray(data.keywords)
+                  ? data.keywords.map((kw, idx) => (
+                      <span key={idx} className="bg-white/10 px-3 py-1 rounded-full text-white text-sm">{kw.trim()}</span>
+                    ))
+                  : data.keywords.split(",").map((kw, idx) => (
+                      <span key={idx} className="bg-white/10 px-3 py-1 rounded-full text-white text-sm">{kw.trim()}</span>
+                    ))
+              )}
+            </div>
+          </div>
           <div className="bg-white/5 rounded-lg p-4 border border-white/10"><p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">Your Value Proposition</p><p className="text-white text-lg mt-1">{data.value_prop}</p></div>
           <div className="bg-white/5 rounded-lg p-4 border border-white/10 flex items-center justify-between"><p className="text-yellow-400 text-sm font-semibold uppercase tracking-wider">Growth Potential</p><div className="flex items-center gap-2"><span className="text-white text-2xl font-bold">{data.lead_score}/10</span><span className="text-gray-400 text-sm">🔮 AI Scored</span></div></div>
         </div>

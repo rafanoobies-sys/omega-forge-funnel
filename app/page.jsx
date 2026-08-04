@@ -1,62 +1,359 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function StoryForm() {
+export default function ChatFunnel() {
+  const router = useRouter();
   const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [answers, setAnswers] = useState({
+    full_name: "",
     business_name: "",
+    business_status: "",
     origin_story: "",
     products_list: "",
     struggles: "",
     secret_edge: "",
     goal_6months: "",
+    email: "",
+    phone: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [offTrack, setOffTrack] = useState(false);
 
-  const steps = [
-    { title: "The Origin Story", field: "origin_story", question: "Let's start at the very beginning. Tell us about your business. How long have you been doing it, and what made you start? Don't overthink it—just tell us the story.", placeholder: "I've been doing this for 2 years... I started because..." },
-    { title: "Your Products", field: "products_list", question: "What exactly are you selling or providing? List your main products or services. Be specific—we need to know what you actually put out into the world.", placeholder: "Organic vegetables, fruit boxes, farm tours..." },
-    { title: "The Struggle", field: "struggles", question: "What's the real problem right now? Why did you search for help today? Are sales dropping? Can't get reviews? Getting buried by competitors?", placeholder: "Ever since my neighbors started selling the same thing... I'm almost not having a single sale..." },
-    { title: "Your Secret Edge", field: "secret_edge", question: "Here is where we separate you from the rest. What makes your version better than theirs? What's the special ingredient your customers love but you haven't shouted loud enough?", placeholder: "My baked chicken has a more aromatic taste because of my secret herb blend..." },
-    { title: "The 6-Month Win", field: "goal_6months", question: "If we absolutely crushed this for you in 6 months, what does winning look like? More sales? A booked calendar? 100+ glowing reviews? Paint us the picture.", placeholder: "I want to be the go-to place in town... I want to expand to 3 new cities..." },
+  const productOptions = ["Mekaniko", "Masahe", "Aircon/Ref", "Elektrisyan", "Pagkain/Catering", "Linis", "Iba pa"];
+  const struggleOptions = ["Walang nakakakilala", "Hindi marunong sa social media", "Walang booking", "Maraming kalaban", "Hindi alam kung saan magsisimula", "Iba pa"];
+  const statusOptions = [
+    { label: "🧑‍🔧 Freelancer", desc: "Ikaw lang, sariling pangalan ang gamit" },
+    { label: "🚀 Startup", desc: "May brand ka na, gusto mong lumago" },
+    { label: "🏢 Negosyo na", desc: "May kliyente ka na, gusto mong lumaki" },
+    { label: "📌 Iba pa", desc: "Iba ang sitwasyon mo" }
   ];
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  const handleNext = () => { if (step < steps.length - 1) setStep(step + 1); };
-  const handleBack = () => { if (step > 0) setStep(step - 1); };
+  const updateAnswer = (field, value) => {
+    setAnswers((prev) => ({ ...prev, [field]: value }));
+    setOffTrack(false);
+  };
+
+  const goToNext = () => {
+    if (step === 0 && !answers.full_name.trim()) {
+      setOffTrack(true);
+      return;
+    }
+    if (step === 1 && !answers.business_name.trim()) {
+      setOffTrack(true);
+      return;
+    }
+    if (step === 2 && !answers.business_status) {
+      setOffTrack(true);
+      return;
+    }
+    setOffTrack(false);
+    setStep((s) => s + 1);
+  };
+
+  const goToPrev = () => setStep((s) => s - 1);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/onboard-lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
-      const data = await response.json();
+      const res = await fetch("/api/onboard-lead", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(answers),
+});
+      const data = await res.json();
       if (data.success) {
-        localStorage.setItem("leadId", data.record_id);
         localStorage.setItem("welcomeData", JSON.stringify(data));
-        window.location.href = `/welcome?lead_id=${data.record_id}`;
-      } else { alert("Something went wrong. Please try again."); }
-    } catch (error) { console.error("Error:", error); alert("Something went wrong. Please try again."); } 
-    finally { setLoading(false); }
+        router.push(`/welcome?lead_id=${data.record_id}`);
+      } else {
+        alert("May mali. Pakisubukan ulit.");
+      }
+    } catch (err) {
+      alert("Error sa connection. Pakicheck ang internet mo.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const currentStep = steps[step];
-  const progress = ((step + 1) / steps.length) * 100;
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Kumusta! 👋</h2>
+            <p>Ano ang pangalan mo?</p>
+            <input
+              type="text"
+              className="w-full p-3 border rounded-lg bg-transparent text-white"
+              placeholder="Halimbawa: Mark Santos"
+              value={answers.full_name}
+              onChange={(e) => updateAnswer("full_name", e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && goToNext()}
+              autoFocus
+            />
+            {offTrack && <p className="text-yellow-400 text-sm">Paki‑type ang iyong pangalan para magpatuloy.</p>}
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">At ano ang tawag sa iyong negosyo?</h2>
+            <p>Kahit ikaw lang — bigyan mo ng pangalan.</p>
+            <input
+              type="text"
+              className="w-full p-3 border rounded-lg bg-transparent text-white"
+              placeholder="Halimbawa: Mark's Auto Repair"
+              value={answers.business_name}
+              onChange={(e) => updateAnswer("business_name", e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && goToNext()}
+            />
+            {offTrack && <p className="text-yellow-400 text-sm">Paki‑type ang pangalan ng negosyo mo.</p>}
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Alin sa mga ito ang pinaka‑tumutugma sa'yo?</h2>
+            <p className="text-gray-400 text-sm">Makakatulong ito para ma‑tailor namin ang iyong site.</p>
+            <div className="flex flex-wrap gap-2">
+              {statusOptions.map((opt) => (
+                <button
+                  key={opt.label}
+                  className={`px-4 py-2 rounded-xl border text-left ${
+                    answers.business_status === opt.label
+                      ? "bg-yellow-400 text-black border-yellow-400"
+                      : "bg-transparent border-gray-600 text-white hover:border-yellow-400"
+                  } transition`}
+                  onClick={() => {
+                    updateAnswer("business_status", opt.label);
+                    setTimeout(goToNext, 300);
+                  }}
+                >
+                  <div className="font-semibold">{opt.label}</div>
+                  <div className="text-xs opacity-60">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+            {offTrack && <p className="text-yellow-400 text-sm">Pumili ng isa para magpatuloy.</p>}
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Kwento mo, paano ka nagsimula?</h2>
+            <p>
+              {answers.business_status === "🧑‍🔧 Freelancer" && "Ano ang nag‑udyok sa'yo na gamitin ang iyong kakayahan para makatulong sa iba?"}
+              {answers.business_status === "🚀 Startup" && "Bakit mo naisipang bumuo ng isang bagay na higit pa sa iyong sarili?"}
+              {answers.business_status === "🏢 Negosyo na" && "Ano ang nagtulak sa'yo na magnegosyo — at ano ang nagpapanatili sa'yo?"}
+              {!answers.business_status && "Ano ang kwento ng iyong pagsisimula?"}
+            </p>
+            <textarea
+              className="w-full p-3 border rounded-lg bg-transparent text-white h-32"
+              placeholder="Halimbawa: Nagsimula ako dahil..."
+              value={answers.origin_story}
+              onChange={(e) => updateAnswer("origin_story", e.target.value)}
+            />
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Ano ang iyong iniaalok?</h2>
+            <p>Piliin ang lahat ng naaangkop:</p>
+            <div className="flex flex-wrap gap-2">
+              {productOptions.map((opt) => (
+                <button
+                  key={opt}
+                  className={`px-4 py-2 rounded-full border ${
+                    answers.products_list.includes(opt)
+                      ? "bg-yellow-400 text-black border-yellow-400"
+                      : "bg-transparent border-gray-400 text-white"
+                  }`}
+                  onClick={() => {
+                    let current = answers.products_list ? answers.products_list.split(",").map(s => s.trim()) : [];
+                    if (current.includes(opt)) {
+                      current = current.filter((i) => i !== opt);
+                    } else {
+                      current.push(opt);
+                    }
+                    updateAnswer("products_list", current.join(", "));
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            {answers.products_list.includes("Iba pa") && (
+              <input
+                type="text"
+                className="w-full p-3 border rounded-lg bg-transparent text-white mt-2"
+                placeholder="Ilagay ang iba mong produkto/serbisyo"
+                onChange={(e) => {
+                  const current = answers.products_list.split(",").filter(s => s.trim() !== "Iba pa" && s.trim() !== "");
+                  current.push(e.target.value);
+                  updateAnswer("products_list", current.join(", "));
+                }}
+              />
+            )}
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Ano ang pinakamalaking hamon mo ngayon?</h2>
+            <p>Piliin ang isa o higit pa:</p>
+            <div className="flex flex-wrap gap-2">
+              {struggleOptions.map((opt) => (
+                <button
+                  key={opt}
+                  className={`px-4 py-2 rounded-full border ${
+                    answers.struggles.includes(opt)
+                      ? "bg-yellow-400 text-black border-yellow-400"
+                      : "bg-transparent border-gray-400 text-white"
+                  }`}
+                  onClick={() => {
+                    let current = answers.struggles ? answers.struggles.split(",").map(s => s.trim()) : [];
+                    if (current.includes(opt)) {
+                      current = current.filter((i) => i !== opt);
+                    } else {
+                      current.push(opt);
+                    }
+                    updateAnswer("struggles", current.join(", "));
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            {answers.struggles.includes("Iba pa") && (
+              <input
+                type="text"
+                className="w-full p-3 border rounded-lg bg-transparent text-white mt-2"
+                placeholder="Ilagay ang iyong hamon"
+                onChange={(e) => {
+                  const current = answers.struggles.split(",").filter(s => s.trim() !== "Iba pa" && s.trim() !== "");
+                  current.push(e.target.value);
+                  updateAnswer("struggles", current.join(", "));
+                }}
+              />
+            )}
+          </div>
+        );
+      case 6:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Ano ang nagpapa‑iba sa'yo?</h2>
+            <p>
+              {answers.business_status === "🧑‍🔧 Freelancer" && "Ano ang sinasabi ng iyong mga kliyente tungkol sa'yo?"}
+              {answers.business_status === "🚀 Startup" && "Ano ang isang bagay na pinaninindigan ng iyong brand?"}
+              {answers.business_status === "🏢 Negosyo na" && "Ano ang pundasyon ng iyong reputasyon?"}
+              {!answers.business_status && "Ano ang ginagawa mong mas mahusay kaysa sa iba?"}
+            </p>
+            <textarea
+              className="w-full p-3 border rounded-lg bg-transparent text-white h-32"
+              placeholder="Halimbawa: Pinapahalagahan ko ang..."
+              value={answers.secret_edge}
+              onChange={(e) => updateAnswer("secret_edge", e.target.value)}
+            />
+          </div>
+        );
+      case 7:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Ano ang iyong layunin sa susunod na 6 na buwan?</h2>
+            <p>
+              {answers.business_status === "🧑‍🔧 Freelancer" && "Mas maraming kliyente, mas matatag na kita?"}
+              {answers.business_status === "🚀 Startup" && "Unang 10 kliyente, pagkilala sa brand?"}
+              {answers.business_status === "🏢 Negosyo na" && "Pag‑lago, sistema, at mas maraming review?"}
+              {!answers.business_status && "Saan mo nakikita ang iyong negosyo?"}
+            </p>
+            <textarea
+              className="w-full p-3 border rounded-lg bg-transparent text-white h-32"
+              placeholder="Halimbawa: Sa susunod na 6 na buwan, gusto kong..."
+              value={answers.goal_6months}
+              onChange={(e) => updateAnswer("goal_6months", e.target.value)}
+            />
+          </div>
+        );
+      case 8:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Paano namin ka maaabot?</h2>
+            <p>Ipadadala namin ang iyong AI insights at booking reminders dito.</p>
+            <input
+              type="email"
+              className="w-full p-3 border rounded-lg bg-transparent text-white"
+              placeholder="Email address"
+              value={answers.email}
+              onChange={(e) => updateAnswer("email", e.target.value)}
+            />
+            <input
+              type="tel"
+              className="w-full p-3 border rounded-lg bg-transparent text-white"
+              placeholder="Phone number"
+              value={answers.phone}
+              onChange={(e) => updateAnswer("phone", e.target.value)}
+            />
+          </div>
+        );
+      case 9:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Balikan ang iyong mga sagot</h2>
+            <div className="bg-white/5 p-4 rounded-lg space-y-2 text-sm">
+              <p><span className="text-yellow-400">Pangalan:</span> {answers.full_name}</p>
+              <p><span className="text-yellow-400">Negosyo:</span> {answers.business_name}</p>
+              <p><span className="text-yellow-400">Uri:</span> {answers.business_status}</p>
+              <p><span className="text-yellow-400">Kwento:</span> {answers.origin_story?.slice(0, 60)}...</p>
+              <p><span className="text-yellow-400">Alok:</span> {answers.products_list}</p>
+              <p><span className="text-yellow-400">Hamon:</span> {answers.struggles}</p>
+              <p><span className="text-yellow-400">Edge:</span> {answers.secret_edge?.slice(0, 60)}...</p>
+              <p><span className="text-yellow-400">Layunin:</span> {answers.goal_6months?.slice(0, 60)}...</p>
+              <p><span className="text-yellow-400">Contact:</span> {answers.email} | {answers.phone}</p>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full bg-yellow-400 text-black py-3 rounded-lg font-semibold hover:bg-yellow-500 transition"
+            >
+              {loading ? "Ipinapadala..." : "Ipadala ang Kwento 🚀"}
+            </button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
-      <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white">Omega <span className="text-yellow-400">Forge</span></h1>
-          <p className="text-gray-400 mt-1">Forging Stories Into Growth Engines</p>
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full bg-gray-800 rounded-2xl p-6 shadow-2xl border border-gray-700">
+        <div className="w-full bg-gray-700 rounded-full h-1.5 mb-6">
+          <div
+            className="bg-yellow-400 h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${(step / 9) * 100}%` }}
+          />
         </div>
-        <div className="w-full bg-white/20 rounded-full h-2 mb-6"><div className="bg-yellow-400 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} /></div>
-        <div className="mb-6"><span className="text-yellow-400 text-sm font-semibold">Step {step + 1} of {steps.length}</span><h2 className="text-2xl font-semibold text-white mt-1">{currentStep.title}</h2></div>
-        <p className="text-gray-300 mb-4 text-lg">{currentStep.question}</p>
-        <textarea name={currentStep.field} value={formData[currentStep.field]} onChange={handleChange} placeholder={currentStep.placeholder} rows={6} className="w-full p-4 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/50 transition-all" />
-        <div className="flex justify-between mt-6 gap-4">
-          <button onClick={handleBack} disabled={step === 0} className={`px-6 py-2 rounded-lg font-semibold transition-all ${step === 0 ? "bg-white/5 text-gray-500 cursor-not-allowed" : "bg-white/10 text-white hover:bg-white/20"}`}>Back</button>
-          {step === steps.length - 1 ? <button onClick={handleSubmit} disabled={loading} className={`px-8 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold rounded-lg transition-all ${loading ? "opacity-50 cursor-not-allowed" : ""}`}>{loading ? "Processing..." : "Tell My Story →"}</button> : <button onClick={handleNext} className="px-8 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold rounded-lg transition-all">Next →</button>}
+        <div className="min-h-[300px]">
+          {renderStep()}
+        </div>
+        <div className="flex justify-between mt-6">
+          <button
+            onClick={goToPrev}
+            className={`px-4 py-2 text-sm rounded-lg ${step === 0 ? "opacity-30 cursor-not-allowed" : "hover:bg-gray-700"}`}
+            disabled={step === 0}
+          >
+            ← Bumalik
+          </button>
+          {step < 9 && (
+            <button
+              onClick={goToNext}
+              className="px-4 py-2 text-sm bg-yellow-400 text-black rounded-lg font-semibold hover:bg-yellow-500 transition"
+            >
+              {step === 8 ? "Suriin at Ipadala →" : "Susunod →"}
+            </button>
+          )}
         </div>
       </div>
     </div>
